@@ -1,0 +1,211 @@
+ A = [7 4 0];
+B = [5 16 0];
+C = [25 25 0];
+D = [23 10 0];
+E = [18 35 0];
+F = [43 32 0];
+G = [45 17 0];
+
+lAB = norm(B-A);
+lBC = norm(C-B);
+lCD = norm(D-C);
+lBE = norm(E -B);
+lEF = norm(F - E);
+lFG = norm(G-F);
+lCE = norm(E -C);
+
+%store new positions for plotting
+
+new_B_x =B(1);
+new_B_y =B(2);
+new_C_x =C(1);
+new_C_y =C(2);
+new_E_x =E(1);
+new_E_y =E(2);
+new_F_x =F(1);
+new_F_y =F(2);
+
+%circle intersection technique
+%joint coordinates have been defined
+%length of links defined
+
+%compute initial angle of input link AB
+
+initial_theta = atan2(B(2)-A(2),B(1)-A(1));
+
+if (initial_theta<0)
+    inputAngle = 2*pi + initial_theta;
+else
+    inputAngle = initial_theta;
+end
+
+for theta=1:1:360
+
+    %new position of joint B
+
+    B_new = A + [lAB*cos(inputAngle+deg2rad(theta)) lAB*sin(inputAngle+deg2rad(theta)) 0];
+
+    %new position of C
+    %with B_new as center, BC as radius
+    %with D as center and DC as radius
+
+    [Cx, Cy] = circcirc(B_new(1),B_new(2),lBC,D(1),D(2),lCD);
+
+    %checking if there is an NaN
+
+    circIntersect_x = any(isnan(vpa(Cx)));
+    circIntersect_y = any(isnan(vpa(Cy)));
+
+    if circIntersect_x==0 && circIntersect_y==0
+        C_1 =[Cx(1) Cy(1) 0];
+        C_2 =[Cx(2) Cy(2) 0];
+
+        %distance to deterine whether C_1 or C_2 is correct
+        dist1 = norm(C_1-C);
+        dist2 = norm(C_2-C);
+
+        if (dist1<dist2)
+            C_new = vpa(C_1);
+
+        else
+
+            C_new = vpa(C_2);
+        end
+
+        %New Posiion of Joint E using B_new and C_new
+        [Ex,Ey] = circcirc(B_new(1),B_new(2),lBE,C_new(1),C_new(2),lCE);
+
+          %checking if there is an NaN
+
+    circIntersect_x = any(isnan(vpa(Ex)));
+    circIntersect_y = any(isnan(vpa(Ey)));
+
+    if circIntersect_x==0 && circIntersect_y==0
+        E_1 =[Ex(1) Ey(1) 0];
+        E_2 =[Ex(2) Ey(2) 0];
+
+        %distance to deterine whether E_1 or E_2 is correct
+        distE1 = norm(E_1-E);
+        distE2 = norm(E_2-E);
+
+        if (distE1<distE2)
+            E_new = vpa(E_1);
+
+        else
+
+            E_new = vpa(E_2);
+        end
+
+        %New position of joint F using E_new and G
+        [Fx,Fy] = circcirc(E_new(1),E_new(2),lEF,G(1),G(2),lFG);
+
+          %checking if there is an NaN
+
+    circIntersect_x_F = any(isnan(vpa(Fx)));
+    circIntersect_y_F = any(isnan(vpa(Fy)));
+
+    if circIntersect_x_F==0 && circIntersect_y_F==0
+        F_1 =[Fx(1) Fy(1) 0];
+        F_2 =[Fx(2) Fy(2) 0];
+
+        %distance to deterine whether E_1 or E_2 is correct
+        distF1 = norm(F_1-F);
+        distF2 = norm(F_2-F);
+
+        if (distF1<distF2)
+            F_new = vpa(F_1);
+
+        else
+
+            F_new = vpa(F_2);
+        end
+
+        %Store values for plotting
+
+        new_B_x(theta+1) = B_new(1);
+        new_B_y(theta+1) = B_new(2);
+        new_C_x(theta+1) = C_new(1);
+        new_C_y(theta+1) = C_new(2);
+        new_E_x(theta+1) = E_new(1);
+        new_E_y(theta+1) = E_new(2);
+        new_F_x(theta+1) = F_new(1);
+        new_F_y(theta+1) = F_new(2);
+
+          B=B_new;
+         C=C_new;
+         E=E_new;
+         F=F_new;
+
+        %Static equilibrium code
+% The following code has been turned into comments so that the code of this
+% program may run faster
+        %Center of Mass of each link
+%s1 = (A+B)/2;
+%s2 = (B+C+E)/3;
+%s3 = (C+D)/2;
+%s4 = (E+F)/2;
+%s5 = (F+G)/2;
+
+%eqn2 = cross(A-s1,ForceA) + cross(B-s1, ForceB) + InputTorque == 0;
+
+%eqn3 = -ForceB + ForceC + ForceE + WBEC == 0;
+
+%eqn4 = cross(B-s2, -ForceB) + cross(C-s2, ForceC) + cross(E-s2, ForceE)== 0;
+
+%eqn5 = -ForceC + ForceD + WCD == 0;
+
+%eqn6 = cross(C-s3, -ForceC) + cross(D-s3, ForceD) == 0;
+ 
+
+%ForceF = [FFx FFy 0];
+ 
+%eqn7 = -ForceE + ForceF + WEF == 0;
+
+%eqn8 = cross(E-s4, -ForceE) + cross(F-s4, ForceF) == 0;
+
+%eqn9 = -ForceF+ ForceG + WFG + AppliedForce == 0;
+
+%eqn10 = cross(F-s5, -ForceF) + cross(G-s5, ForceG) == 0;
+
+%Solving the 10 equations
+
+%eqnMatrix = [eqn1,eqn2,eqn3,eqn4,eqn5,eqn6,eqn7,eqn8,eqn9,eqn10];
+
+%StaticSolution = solve(eqnMatrix,[FAx FAy FBx FBy FCx FCy FDx FDy FEx FEy FFx FFy FGx FGy Tin]);
+
+%Force_Ax(theta+1) = double(StaticSolution.FAx);
+ %Force_Ay(theta+1) = double(StaticSolution.FAy);
+ %Force_Bx(theta+1) = double(StaticSolution.FBx);
+ %Force_By(theta+1) = double(StaticSolution.FBy);
+ %Force_Cx(theta+1) = double(StaticSolution.FCx);
+ %Force_Cy(theta+1) = double(StaticSolution.FCy);
+ %Force_Dx(theta+1) = double(StaticSolution.FDx);
+ %Force_Dy(theta+1) = double(StaticSolution.FDy);
+ %Force_Ex(theta+1) = double(StaticSolution.FEx);
+ %Force_Ey(theta+1) = double(StaticSolution.FEy);
+ %Force_Fx(theta+1) = double(StaticSolution.FFx);
+ %Force_Fy(theta+1) = double(StaticSolution.FFy);
+ %Force_Gx(theta+1) = double(StaticSolution.FGx);
+% Force_Gy(theta+1) = double(StaticSolution.FGy);
+ %Input_Torque = double(StaticSolution.Tin);
+
+%velocity and acceleration
+
+%Newton's second law
+
+
+    else
+        fprintf('New position of F cannot be determind at angle: %d degree',theta);
+    end
+    else
+        fprintf('New position of E cannot be determind at angle: %d degree',theta);
+    end
+
+    else
+        fprintf('New position of C cannot be determind at angle: %d degree',theta);
+    end
+
+end
+
+%The maximum angle of rotation this linkage experiences is 42 degrees
+%before joint F reaches an invalid position.
