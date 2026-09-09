@@ -1,0 +1,755 @@
+% Joint Location
+A = [1.4 0.485 0];
+B = [1.67 0.99 0];
+C = [0.255 1.035 0];
+D = [0.285 0.055 0];
+E = [0.195 2.54 0];
+F = [-0.98 2.57 0];
+G = [0.05 0.2 0];
+
+% Link Length
+lAB = 0.5726;
+lBC = 1.4157;
+lDCE = 2.4866;
+lEF = 1.1754;
+lGF = 2.5841;
+
+syms FAx FAy FBx FBy FCx FCy FDx FDy FEx FEy FFx FFy FGx FGy Tin
+
+ForceA = [FAx FAy 0];
+ForceB = [FBx FBy 0];
+ForceC = [FCx FCy 0];
+ForceD = [FDx FDy 0];
+ForceE = [FEx FEy 0];
+ForceF = [FFx FFy 0];
+ForceG = [FGx FGy 0];
+InputTorque = [0 0 Tin];
+
+%Applied Force from weight
+
+AppliedForce = [200 0 0];
+
+%weight
+WAB = [0 -1 0];
+WBC = [0 -1 0];
+WDE = [0 -1 0];
+WEF = [0 -1 0];
+WFG = [0 -1 0];
+
+%Center of Mass of each link
+s1 = (A+B)/2;
+s2 = (B+C)/3;
+s3 = (D+E)/2;
+s4 = (E+F)/2;
+s5 = (F+G)/2;
+
+%Static Analysis
+%Static equilibrium equations for Link AB
+
+eqn1 = ForceA + ForceB + WAB == 0;
+
+eqn2 = cross(A-s1,ForceA) + cross(B-s1, ForceB) + InputTorque == 0;
+
+eqn3 = -ForceB + ForceC + WBC ==0;
+
+eqn4 = cross(B-s2,-ForceB) + cross(C-s2,ForceC) == 0;
+
+eqn5 = ForceE + ForceD - ForceC + WDE == 0;
+
+eqn6 = cross(E-s3,ForceE) + cross(D-s3,ForceD) + cross(C-s3,-ForceC) == 0;
+
+eqn7 = ForceF + -ForceE + WEF == 0;
+
+eqn8 = cross(F-s4,ForceF) + cross(E-s4,-ForceE) == 0;
+
+eqn9 = ForceG - ForceF + WFG + AppliedForce == 0;
+
+eqn10 = cross(G-s5,ForceG) + cross(F-s5,-ForceF) == 0;
+
+%Solving equations
+
+eqnMatrix = [eqn1,eqn2,eqn3,eqn4,eqn5,eqn6,eqn7,eqn8,eqn9,eqn10];
+
+StaticSolution = solve(eqnMatrix,[FAx FAy FBx FBy FCx FCy FDx FDy FEx FEy FFx FFy FGx FGy Tin]);
+
+Force_Ax(1) = double(StaticSolution.FAx);
+ Force_Ay(1) = double(StaticSolution.FAy);
+ Force_Bx(1) = double(StaticSolution.FBx);
+ Force_By(1) = double(StaticSolution.FBy);
+ Force_Cx(1) = double(StaticSolution.FCx);
+ Force_Cy(1) = double(StaticSolution.FCy);
+ Force_Dx(1) = double(StaticSolution.FDx);
+ Force_Dy(1) = double(StaticSolution.FDy);
+ Force_Ex(1) = double(StaticSolution.FEx);
+ Force_Ey(1) = double(StaticSolution.FEy);
+ Force_Fx(1) = double(StaticSolution.FFx);
+ Force_Fy(1) = double(StaticSolution.FFy);
+ Force_Gx(1) = double(StaticSolution.FGx);
+ Force_Gy(1) = double(StaticSolution.FGy);
+Input_Torque = double(StaticSolution.Tin);
+
+disp('Force A:');
+disp([Force_Ax, Force_Ay]);
+disp('Force B')
+disp([Force_Bx, Force_By]);
+disp('Force C')
+disp([Force_Cx, Force_Cy]);
+disp('Force D')
+disp([Force_Dx, Force_Dy]);
+disp('Force E')
+disp([Force_Ex, Force_Ey]);
+disp('Force F')
+disp([Force_Fx, Force_Fy]);
+disp('Force G')
+disp([Force_Gx, Force_Gy]);
+disp('Input Torque:');
+disp(Input_Torque);
+
+%Angular Velocity Calculations
+%Loop ABCDA
+
+syms wBC wDCE
+omega_AB = [0 0 2.63];
+omega_BC = [0 0 wBC];
+omega_DCE = [0 0 wDCE];
+
+eqn11 = cross(omega_AB,B-A) + cross(omega_BC,B-A) + cross(omega_DCE,C-D);
+
+loop1Solution = solve(eqn11,[wBC wDCE]);
+
+%Extract angular velocities from loop solution
+angularVelocity_DCE = double(loop1Solution.wDCE);
+angularVelocity_BC = double(loop1Solution.wBC);
+
+%loop DEFGD
+syms wEF wFG;
+omega_EF = [0 0 wEF];
+omega_FG = [0 0 wFG];
+
+omegaBC = [0 0 angularVelocity_BC];
+omegaDCE = [0 0 angularVelocity_DCE];
+
+eqn12 = cross(omegaDCE,E-D) + cross(omegaBC,C-B) + cross(omega_EF,F-E) + cross(omega_FG,G-F) == 0;
+
+loop2Solution = solve(eqn12,[wEF wFG]);
+
+angularVelocity_EF = double(loop2Solution.wEF)
+angularVelocity_FG = double(loop2Solution.wFG)
+
+omegaEF = [0 0 angularVelocity_EF];
+omegaFG = [0 0 angularVelocity_FG];
+
+
+%Angular Acceleration Calculations
+
+syms aDCE aBC
+alpha_AB = [0 0 0];
+alpha_DCE = [0 0 aDCE];
+alpha_BC = [0 0 aBC];
+
+a_B_A = cross(alpha_AB, B-A) + cross(omega_AB,cross(omega_AB,B-A));
+a_C_D =  cross(alpha_DCE, C-D) + cross(omegaDCE,cross(omegaDCE,C-D));
+a_B_C = cross(alpha_BC, B-C) + cross(omegaBC,cross(omegaBC,B-C));
+
+eqn13 = a_B_A + a_C_D + a_B_C ==0;
+
+loop1AccSolution = solve(eqn13,[aDCE aBC]);
+
+alphaDCE = double(loop1AccSolution.aDCE)
+alphaBC = double(loop1AccSolution.aBC)
+
+alphaBC_Vector = [0 0 alphaBC];
+alphaDCE_Vector = [0 0 alphaDCE];
+
+%loop DEFGD
+
+syms aEF aFG;
+alpha_EF = [0 0 aEF];
+alpha_FG = [0 0 aFG];
+
+a_D_E = cross(alphaDCE_Vector,E-D) + cross(omegaDCE,cross(omegaDCE,E-D));
+
+angVel_EF = [0 0 angularVelocity_EF];
+angVel_FG = [0 0 angularVelocity_FG];
+
+a_F_E = cross(alpha_EF,F-E) + cross(angVel_EF,cross(angVel_EF,F-E));
+
+a_G_F = cross(alpha_FG,G-F) + cross(angVel_FG,cross(angVel_FG,G-F));
+
+eqn14 =  a_D_E + a_F_E + a_G_F == 0;
+
+loop2AccSolution = solve(eqn14, [aEF aFG]);
+
+alphaEF = double(loop2AccSolution.aEF);
+alphaFG = double(loop2AccSolution.aFG);
+
+%velocity at Joints
+
+v_B_A = cross(omega_AB,B-A);
+
+v_C_B = cross(omegaBC,C-B);
+
+Ve_B = v_B_A + v_C_B
+
+%Ve_C = v_B_C + v_E_C;
+
+v_B_C = cross(omegaBC,C-B);
+
+v_E_C = cross(omegaDCE,E-C);
+
+Ve_C = v_B_C + v_E_C
+
+%Ve_E = v_C_E + v_F_E;
+
+v_C_E = cross(omegaDCE,C-E);
+
+v_F_E = cross(omegaEF,F-E);
+
+Ve_E = v_C_E + v_F_E
+
+%Ve_F = v_E_F + v_G_F;
+
+v_E_F = cross(omegaEF,E-F);
+
+v_G_F = cross(omegaFG,F-G);
+
+Ve_F = v_E_F + v_G_F
+
+%v_s1_A = v_s1_B + v_A_B
+
+v_s1_A = cross(omega_AB,s1-A);
+
+v_B_A = cross(omega_AB,B-A);
+
+vs1_A = v_s1_A + v_B_A;
+
+%v_s2_B = v_s2_C + V_B_C
+
+v_s2_B = cross(omegaBC,s2-B);
+
+v_B_A = cross(omegaBC,C-B);
+
+vs2_B = v_s2_B + v_B_A
+
+%v_s3_C = v_s3_E + V_D_E
+
+v_s3_E = cross(omegaDCE,s3-E);
+
+v_D_E = cross(omegaDCE,E-D);
+
+v_s3_C = v_s3_E + v_D_E
+
+%V_s4_E = V_s4_F + V_E_F
+
+v_s4_F = cross(omegaEF,s4-F);
+
+v_E_F = cross(omegaEF,F-E);
+
+v_s4_E = v_s4_F + v_E_F
+
+%v_s5_F = v_s5_G + v_F_G
+
+v_s5_G = cross(omegaFG,s5-G);
+
+v_F_G = cross(omegaFG,G-F);
+
+v_s5_F = v_s5_G + v_F_G
+
+%Accelerations at com of every link
+
+as1_A = cross(alpha_AB,s1-A) + cross(omega_AB,cross(omega_AB,s1-A));
+
+as2_B = cross(alphaBC_Vector,s2-C) + cross(omegaBC,cross(omegaBC,s2-C));
+
+as3_D = cross(alphaDCE_Vector,s3-D) + cross(omegaDCE,cross(omegaDCE,s3-D));
+
+as4_G = cross([0 0 alphaEF],s4-F) + cross(angVel_EF,cross(angVel_EF, s4-F));
+
+as5_G = cross([0 0  alphaFG], s5-G) + cross(omegaFG, cross(omegaFG, s5-G));
+
+%Newtons Second Law Implementation
+
+MassAB = 1;
+MassBC = 1;
+MassDCE = 1;
+MassEF = 1;
+MassFG = 1;
+
+%Mass Moment of Inertia
+J_AB = 1;
+J_BC = 1;
+J_DCE= 1;
+J_EF = 1;
+J_FG = 1;
+
+syms NFAx NFAy NFBx NFBy NFCx NFCy NFDx NFDy NFEx NFEy NFFx NFFy NFGx NFGy NTin
+
+%Define FOrces 
+
+NForceA = [NFAx NFAy 0];
+NForceB = [NFBx NFBy 0];
+NForceC = [NFCx NFCy 0];
+NForceD = [NFDx NFDy 0];
+NForceE = [NFEx NFEy 0];
+NForceF = [NFFx NFFy 0];
+NForceG = [NFGx NFGy 0];
+NInputTorque = [0 0 NTin];
+
+%Equations for Link AB
+%sum of Forces
+eqn15 = NForceA + NForceB + WAB == MassAB*as1_A;
+
+%sum of moments = 0
+eqn16 = cross(A-s1,NForceA) + cross(B-s1,NForceB) +NInputTorque == J_AB * alpha_AB;
+
+%Equations for Link BC
+%sum of forces
+eqn17 = -NForceB + NForceC + omegaBC == MassBC * as2_B;
+
+%sum of moments
+eqn18 = cross(B-s2, -NForceB) + cross(C-s2, NForceC) == J_BC * alphaBC_Vector;
+
+%Equations for Link CD
+%sum of forces
+eqn19 = -NForceC + NForceD +NForceE + omegaDCE == MassDCE*as3_D;
+
+%sum of moments
+eqn20 = cross(C-s3,-NForceC) + cross(D-s3,NForceD) + cross(E-s3, NForceE) == J_DCE * alphaDCE;
+
+%Equations for Link EF
+%sum of forces
+eqn21 = -NForceE + NForceF + WEF == MassEF * as4_G;
+
+%sum of moments
+eqn22 = cross(E-s4, -NForceE) + cross(F-s4, NForceF) == J_EF * alpha_EF;
+
+%Equations for Link FG
+eqn23 = -NForceF + NForceG + WFG + AppliedForce == MassFG * as5_G;
+
+%sum of moments
+eqn24 = cross(F-s5,-NForceF) + cross(G-s5, NForceG) + NInputTorque == J_FG * [0 0 alphaFG];
+
+%Solving equations
+NeqnMatrix = [eqn15, eqn16, eqn17, eqn18,eqn19,eqn20,eqn21,eqn22,eqn23,eqn24];
+DynamicSolution = solve(NeqnMatrix, [NFAx, NFAy, NFBx, NFBy, NFCx, NFCy, NFDx, NFDy, NFEx, NFEy, NFFx, NFFy, NFGx, NFGy, NTin]);
+   
+% Extract forces from the dynamic solution
+NFAx = double(DynamicSolution.NFAx);
+NFAy = double(DynamicSolution.NFAy);
+NFBx = double(DynamicSolution.NFBx);
+NFBy = double(DynamicSolution.NFBy);
+NFCx = double(DynamicSolution.NFCx);
+NFCy = double(DynamicSolution.NFCy);
+NFDx = double(DynamicSolution.NFDx);
+NFDy = double(DynamicSolution.NFDy);
+NFEx = double(DynamicSolution.NFEx);
+NFEy = double(DynamicSolution.NFEy);
+NFFx = double(DynamicSolution.NFFx);
+NFFy = double(DynamicSolution.NFFy);
+NFGx = double(DynamicSolution.NFGx);
+NFGy = double(DynamicSolution.NFGy);
+NTin = double(DynamicSolution.NTin);
+
+%circle intersection technique
+%joint coordinates have been defined
+%length of links defined
+
+%compute initial angle of input link AB
+
+initial_theta = atan2(B(2)-A(2),B(1)-A(1));
+
+if (initial_theta<0)
+    inputAngle = 2*pi + initial_theta;
+else
+    inputAngle = initial_theta;
+end
+
+for theta=1:1:360
+
+    %new position of joint B
+    B_new = A + [lAB*cos(inputAngle+deg2rad(theta)) lAB*sin(inputAngle+deg2rad(theta)) 0];
+
+    %new position of C
+    %with B_new as center, BC as radius
+    %with D as center and DCE as radius
+
+    [Cx, Cy] = circcirc(B_new(1),B_new(2),lBC,D(1),D(2),lDCE);
+
+    %checking if there is an NaN
+
+    circIntersect_x = any(isnan(vpa(Cx)));
+    circIntersect_y = any(isnan(vpa(Cy)));
+
+    if circIntersect_x==0 && circIntersect_y==0
+        C_1 =[Cx(1) Cy(1) 0];
+        C_2 =[Cx(2) Cy(2) 0];
+
+        %distance to deterine whether C_1 or C_2 is correct
+        dist1 = norm(C_1-C);
+        dist2 = norm(C_2-C);
+
+        if (dist1<dist2)
+            C_new = vpa(C_1);
+
+        else
+
+            C_new = vpa(C_2);
+        end
+        %New Posiion of Joint E using C_new and D
+        [Ex,Ey] = circcirc(B_new(1),B_new(2),lBC,D(1),D(2),lDCE);
+
+          %checking if there is an NaN
+
+    circIntersect_x = any(isnan(vpa(Ex)));
+    circIntersect_y = any(isnan(vpa(Ey)));
+
+    if circIntersect_x==0 && circIntersect_y==0
+        E_1 =[Ex(1) Ey(1) 0];
+        E_2 =[Ex(2) Ey(2) 0];
+
+        %distance to deterine whether E_1 or E_2 is correct
+        distE1 = norm(E_1-E);
+        distE2 = norm(E_2-E);
+
+        if (distE1<distE2)
+            E_new = vpa(E_1);
+
+        else
+
+            E_new = vpa(E_2);
+        end
+
+        %New position of joint F using E_new and G
+        [Fx,Fy] = circcirc(E_new(1),E_new(2),lEF,G(1),G(2),lGF);
+
+          %checking if there is an NaN
+
+    circIntersect_x_F = any(isnan(vpa(Fx)));
+    circIntersect_y_F = any(isnan(vpa(Fy)));
+
+    if circIntersect_x_F==0 && circIntersect_y_F==0
+        F_1 =[Fx(1) Fy(1) 0];
+        F_2 =[Fx(2) Fy(2) 0];
+
+        %distance to deterine whether E_1 or E_2 is correct
+        distF1 = norm(F_1-F);
+        distF2 = norm(F_2-F);
+
+        if (distF1<distF2)
+            F_new = vpa(F_1);
+
+        else
+
+            F_new = vpa(F_2);
+        end
+
+        %Store values for plotting
+
+        new_B_x(theta+1) = B_new(1);
+        new_B_y(theta+1) = B_new(2);
+        new_C_x(theta+1) = C_new(1);
+        new_C_y(theta+1) = C_new(2);
+        new_E_x(theta+1) = E_new(1);
+        new_E_y(theta+1) = E_new(2);
+        new_F_x(theta+1) = F_new(1);
+        new_F_y(theta+1) = F_new(2);
+
+          B=B_new;
+         C=C_new;
+         E=E_new;
+         F=F_new;
+       %Static equilibrium
+       s1 = (A+B)/2;
+s2 = (B+C)/3;
+s3 = (D+E)/2;
+s4 = (E+F)/2;
+s5 = (F+G)/2;
+
+eqn2 = cross(A-s1,ForceA) + cross(B-s1, ForceB) + InputTorque == 0;
+
+eqn3 = -ForceB + ForceC + WBC ==0;
+
+eqn4 = cross(B-s2,-ForceB) + cross(C-s2,ForceC) == 0;
+
+eqn5 = ForceE + ForceD - ForceC + WDE == 0;
+
+eqn6 = cross(E-s3,ForceE) + cross(D-s3,ForceD) + cross(C-s3,-ForceC) == 0;
+
+eqn7 = ForceF + -ForceE + WEF == 0;
+
+eqn8 = cross(F-s4,ForceF) + cross(E-s4,-ForceE) == 0;
+
+eqn9 = ForceG - ForceF + WFG + AppliedForce == 0;
+
+eqn10 = cross(G-s5,ForceG) + cross(F-s5,-ForceF) == 0;
+
+eqnMatrix = [eqn1,eqn2,eqn3,eqn4,eqn5,eqn6,eqn7,eqn8,eqn9,eqn10];
+
+StaticSolution = solve(eqnMatrix,[FAx FAy FBx FBy FCx FCy FDx FDy FEx FEy FFx FFy FGx FGy Tin]);
+
+Force_Ax(1) = double(StaticSolution.FAx);
+ Force_Ay(1) = double(StaticSolution.FAy);
+ Force_Bx(1) = double(StaticSolution.FBx);
+ Force_By(1) = double(StaticSolution.FBy);
+ Force_Cx(1) = double(StaticSolution.FCx);
+ Force_Cy(1) = double(StaticSolution.FCy);
+ Force_Dx(1) = double(StaticSolution.FDx);
+ Force_Dy(1) = double(StaticSolution.FDy);
+ Force_Ex(1) = double(StaticSolution.FEx);
+ Force_Ey(1) = double(StaticSolution.FEy);
+ Force_Fx(1) = double(StaticSolution.FFx);
+ Force_Fy(1) = double(StaticSolution.FFy);
+ Force_Gx(1) = double(StaticSolution.FGx);
+ Force_Gy(1) = double(StaticSolution.FGy);
+Input_Torque = double(StaticSolution.Tin);
+
+%Velocity and Acceleration
+
+syms wBC wDCE
+omega_AB = [0 0 2.63];
+omega_BC = [0 0 wBC];
+omega_DCE = [0 0 wDCE];
+
+eqn11 = cross(omega_AB,B-A) + cross(omega_BC,B-A) + cross(omega_DCE,C-D);
+
+loop1Solution = solve(eqn11,[wBC wDCE]);
+
+angularVelocity_DCE = double(loop1Solution.wDCE);
+angularVelocity_BC = double(loop1Solution.wBC);
+
+omega_EF = [0 0 wEF];
+omega_FG = [0 0 wFG];
+
+omegaBC = [0 0 angularVelocity_BC];
+omegaDCE = [0 0 angularVelocity_DCE];
+
+eqn12 = cross(omegaDCE,E-D) + cross(omegaBC,C-B) + cross(omega_EF,F-E) + cross(omega_FG,G-F) == 0;
+
+loop2Solution = solve(eqn12,[wEF wFG]);
+
+angularVelocity_EF = double(loop2Solution.wEF)
+angularVelocity_FG = double(loop2Solution.wFG)
+
+omegaEF = [0 0 angularVelocity_EF];
+omegaFG = [0 0 angularVelocity_FG];
+
+syms aDCE aBC
+alpha_AB = [0 0 0];
+alpha_DCE = [0 0 aDCE];
+alpha_BC = [0 0 aBC];
+
+a_B_A = cross(alpha_AB, B-A) + cross(omega_AB,cross(omega_AB,B-A));
+a_C_D =  cross(alpha_DCE, C-D) + cross(omegaDCE,cross(omegaDCE,C-D));
+a_B_C = cross(alpha_BC, B-C) + cross(omegaBC,cross(omegaBC,B-C));
+
+eqn13 = a_B_A + a_C_D + a_B_C ==0;
+
+loop1AccSolution = solve(eqn13,[aDCE aBC]);
+
+alphaDCE = double(loop1AccSolution.aDCE)
+alphaBC = double(loop1AccSolution.aBC)
+
+alphaBC_Vector = [0 0 alphaBC];
+alphaDCE_Vector = [0 0 alphaDCE];
+
+%loop DEFGD
+
+syms aEF aFG;
+alpha_EF = [0 0 aEF];
+alpha_FG = [0 0 aFG];
+
+a_D_E = cross(alphaDCE_Vector,E-D) + cross(omegaDCE,cross(omegaDCE,E-D));
+
+angVel_EF = [0 0 angularVelocity_EF];
+angVel_FG = [0 0 angularVelocity_FG];
+
+a_F_E = cross(alpha_EF,F-E) + cross(angVel_EF,cross(angVel_EF,F-E));
+
+a_G_F = cross(alpha_FG,G-F) + cross(angVel_FG,cross(angVel_FG,G-F));
+
+eqn14 =  a_D_E + a_F_E + a_G_F == 0;
+
+loop2AccSolution = solve(eqn14, [aEF aFG]);
+
+alphaEF = double(loop2AccSolution.aEF);
+alphaFG = double(loop2AccSolution.aFG);
+
+%velocity at Joints
+
+v_B_A = cross(omega_AB,B-A);
+
+v_C_B = cross(omegaBC,C-B);
+
+Ve_B = v_B_A + v_C_B
+
+%Ve_C = v_B_C + v_E_C;
+
+v_B_C = cross(omegaBC,C-B);
+
+v_E_C = cross(omegaDCE,E-C);
+
+Ve_C = v_B_C + v_E_C
+
+%Ve_E = v_C_E + v_F_E;
+
+v_C_E = cross(omegaDCE,C-E);
+
+v_F_E = cross(omegaEF,F-E);
+
+Ve_E = v_C_E + v_F_E
+
+%Ve_F = v_E_F + v_G_F;
+
+v_E_F = cross(omegaEF,E-F);
+
+v_G_F = cross(omegaFG,F-G);
+
+Ve_F = v_E_F + v_G_F
+
+%v_s1_A = v_s1_B + v_A_B
+
+v_s1_A = cross(omega_AB,s1-A);
+
+v_B_A = cross(omega_AB,B-A);
+
+vs1_A = v_s1_A + v_B_A;
+
+%v_s2_B = v_s2_C + V_B_C
+
+v_s2_B = cross(omegaBC,s2-B);
+
+v_B_A = cross(omegaBC,C-B);
+
+vs2_B = v_s2_B + v_B_A
+
+%v_s3_C = v_s3_E + V_D_E
+
+v_s3_E = cross(omegaDCE,s3-E);
+
+v_D_E = cross(omegaDCE,E-D);
+
+v_s3_C = v_s3_E + v_D_E
+
+%V_s4_E = V_s4_F + V_E_F
+
+v_s4_F = cross(omegaEF,s4-F);
+
+v_E_F = cross(omegaEF,F-E);
+
+v_s4_E = v_s4_F + v_E_F
+
+%v_s5_F = v_s5_G + v_F_G
+
+v_s5_G = cross(omegaFG,s5-G);
+
+v_F_G = cross(omegaFG,G-F);
+
+v_s5_F = v_s5_G + v_F_G
+
+%Accelerations at com of every link
+
+as1_A = cross(alpha_AB,s1-A) + cross(omega_AB,cross(omega_AB,s1-A));
+
+as2_B = cross(alphaBC_Vector,s2-C) + cross(omegaBC,cross(omegaBC,s2-C));
+
+as3_D = cross(alphaDCE_Vector,s3-D) + cross(omegaDCE,cross(omegaDCE,s3-D));
+
+as4_G = cross([0 0 alphaEF],s4-F) + cross(angVel_EF,cross(angVel_EF, s4-F));
+
+as5_G = cross([0 0  alphaFG], s5-G) + cross(omegaFG, cross(omegaFG, s5-G));
+
+MassAB = 1;
+MassBC = 1;
+MassDCE = 1;
+MassEF = 1;
+MassFG = 1;
+
+%Mass Moment of Inertia
+J_AB = 1;
+J_BC = 1;
+J_DCE= 1;
+J_EF = 1;
+J_FG = 1;
+
+syms NFAx NFAy NFBx NFBy NFCx NFCy NFDx NFDy NFEx NFEy NFFx NFFy NFGx NFGy NTin
+
+%Define FOrces 
+
+NForceA = [NFAx NFAy 0];
+NForceB = [NFBx NFBy 0];
+NForceC = [NFCx NFCy 0];
+NForceD = [NFDx NFDy 0];
+NForceE = [NFEx NFEy 0];
+NForceF = [NFFx NFFy 0];
+NForceG = [NFGx NFGy 0];
+NInputTorque = [0 0 NTin];
+
+%Equations for Link AB
+%sum of Forces
+eqn15 = NForceA + NForceB + WAB == MassAB*as1_A;
+
+%sum of moments = 0
+eqn16 = cross(A-s1,NForceA) + cross(B-s1,NForceB) +NInputTorque == J_AB * alpha_AB;
+
+%Equations for Link BC
+%sum of forces
+eqn17 = -NForceB + NForceC + omegaBC == MassBC * as2_B;
+
+%sum of moments
+eqn18 = cross(B-s2, -NForceB) + cross(C-s2, NForceC) == J_BC * alphaBC_Vector;
+
+%Equations for Link CD
+%sum of forces
+eqn19 = -NForceC + NForceD +NForceE + omegaDCE == MassDCE*as3_D;
+
+%sum of moments
+eqn20 = cross(C-s3,-NForceC) + cross(D-s3,NForceD) + cross(E-s3, NForceE) == J_BC * alphaDCE;
+
+%Equations for Link EF
+%sum of forces
+eqn21 = -NForceE + NForceF + WEF == MassEF * as4_G;
+
+%sum of moments
+eqn22 = cross(E-s4, -NForceE) + cross(F-s4, NForceF) == J_EF * alpha_EF;
+
+%Equations for Link FG
+eqn23 = -NForceF + NForceG + WFG + AppliedForce == MassFG * as5_G;
+
+%sum of moments
+eqn24 = cross(F-s5,-NForceF) + cross(G-s5, NForceG) + NInputTorque == J_FG * [0 0 alphaFG];
+
+%Solving equations
+NeqnMatrix = [eqn15, eqn16, eqn17, eqn18,eqn19,eqn20,eqn21,eqn22,eqn23,eqn24];
+DynamicSolution = solve(NeqnMatrix, [NFAx, NFAy, NFBx, NFBy, NFCx, NFCy, NFDx, NFDy, NFEx, NFEy, NFFx, NFFy, NFGx, NFGy, NTin]);
+   
+% Extract forces from the dynamic solution
+NFAx = double(DynamicSolution.NFAx);
+NFAy = double(DynamicSolution.NFAy);
+NFBx = double(DynamicSolution.NFBx);
+NFBy = double(DynamicSolution.NFBy);
+NFCx = double(DynamicSolution.NFCx);
+NFCy = double(DynamicSolution.NFCy);
+NFDx = double(DynamicSolution.NFDx);
+NFDy = double(DynamicSolution.NFDy);
+NFEx = double(DynamicSolution.NFEx);
+NFEy = double(DynamicSolution.NFEy);
+NFFx = double(DynamicSolution.NFFx);
+NFFy = double(DynamicSolution.NFFy);
+NFGx = double(DynamicSolution.NFGx);
+NFGy = double(DynamicSolution.NFGy);
+NTin = double(DynamicSolution.NTin);
+
+ else
+        fprintf('New position of F cannot be determind at angle: %d degree',theta);
+    end
+    else
+        fprintf('New position of E cannot be determind at angle: %d degree',theta);
+    end
+
+    else
+        fprintf('New position of C cannot be determind at angle: %d degree',theta);
+    end
+
+end
+
+plot(Force)
